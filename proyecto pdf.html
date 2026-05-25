@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Pedidos - Boleta Aceite</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <style>
+        /* ==========================================================================
+           ESTILOS DE LA INTERFAZ WEB (Lo que se ve en el celular/pantalla)
+           ========================================================================== */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background-color: #f4f6f9;
+            color: #333;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #0056b3;
+            margin-top: 0;
+            text-align: center;
+            border-bottom: 2px solid #0056b3;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        
+        /* Estilos para las filas de productos en el formulario */
+        .producto-row {
+            background: #f9f9f9;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .producto-grid {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1.5fr;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+        .subtotal-text {
+            text-align: right;
+            font-size: 14px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        button:active {
+            background-color: #1e7e34;
+        }
+
+        /* ==========================================================================
+           ESTILOS EXACTOS DE LA BOLETA PDF (Igual a tu imagen)
+           ========================================================================== */
+        #boleta-pdf {
+            display: none; /* Oculto en la página, solo visible en el PDF */
+            width: 750px;  /* Ancho ideal para formato Letter */
+            background: white;
+            padding: 40px;
+            color: black;
+            font-family: Arial, sans-serif;
+            box-sizing: border-box;
+        }
+        
+        /* Encabezado */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .header-table td {
+            vertical-align: top;
+            border: none;
+        }
+        .empresa-info {
+            text-align: center;
+            line-height: 1.3;
+        }
+        .empresa-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .empresa-info p {
+            margin: 0;
+            font-size: 14px;
+        }
+        
+        /* Recuadro de Boleta Derecho */
+        .boleta-box {
+            border: 1px solid black;
+            text-align: center;
+            width: 220px;
+            padding: 5px 0;
+            line-height: 1.4;
+            font-size: 14px;
+        }
+        .boleta-box .tipo-doc {
+            border-top: 1px solid black;
+            border-bottom: 1px solid black;
+            background-color: #f2f2f2;
+            font-weight: bold;
+            padding: 2px 0;
+            margin: 3px 0;
+        }
+
+        /* Datos del Cliente y Documento */
+        .cliente-info {
+            width: 100%;
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+        .cliente-info td {
+            padding: 4px 0;
+            border: none;
+        }
+        .linea-subrayado {
+            border-bottom: 1px solid black !important;
+        }
+
+        /* Tabla de Productos */
+        .items-tabla {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .items-tabla th, .items-tabla td {
+            border: 1px solid black;
+            padding: 6px 8px;
+            text-align: left;
+        }
+        .items-tabla th {
+            background-color: #e0e0e0;
+            font-weight: bold;
+        }
+        /* Alineaciones específicas de la tabla */
+        .text-right {
+            text-align: right;
+        }
+        .text-center {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Nueva Boleta de Venta</h2>
+        
+        <form id="form-pedido">
+            <div class="form-group">
+                <label for="input-cliente">Cliente:</label>
+                <input type="text" id="input-cliente" placeholder="Nombre del cliente" required>
+            </div>
+            
+            <div class="grid-2" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group">
+                    <label for="input-doc">N° Documento:</label>
+                    <input type="text" id="input-doc" value="001" required>
+                </div>
+                <div class="form-group">
+                    <label for="input-fecha">Fecha:</label>
+                    <input type="date" id="input-fecha" required>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid #ccc; margin: 20px 0;">
+            <label style="margin-bottom: 10px;">Detalle del Pedido:</label>
+
+            <div class="producto-row">
+                <div class="producto-grid">
+                    <div>
+                        <label style="font-size:12px;">Litros</label>
+                        <input type="number" id="cant1" step="0.1" value="5.5" oninput="calcularTotales()">
+                    </div>
+                    <div>
+                        <label style="font-size:12px;">Descripción</label>
+                        <input type="text" id="desc1" value="Aceite crudo">
+                    </div>
+                    <div>
+                        <label style="font-size:12px;">P. Unitario</label>
+                        <input type="number" id="prec1" step="0.01" value="15.00" oninput="calcularTotales()">
+                    </div>
+                </div>
+                <div class="subtotal-text">Importe: $<span id="sub1">82.50</span></div>
+            </div>
+
+            <div class="producto-row">
+                <div class="producto-grid">
+                    <div>
+                        <input type="number" id="cant2" step="0.1" value="3" oninput="calcularTotales()">
+                    </div>
+                    <div>
+                        <input type="text" id="desc2" value="Aceite procesado">
+                    </div>
+                    <div>
+                        <input type="number" id="prec2" step="0.01" value="30.00" oninput="calcularTotales()">
+                    </div>
+                </div>
+                <div class="subtotal-text">Importe: $<span id="sub2">90.00</span></div>
+            </div>
+
+            <div style="text-align: right; font-size: 18px; font-weight: bold; margin-top: 15px; color: #0056b3;">
+                Total General: $<span id="total-formulario">172.50</span>
+            </div>
+            
+            <button type="button" onclick="generarBoletaPDF()">Guardar y Descargar PDF</button>
+        </form>
+    </div>
+
+
+    <div id="boleta-pdf">
+        
+        <table class="header-table">
+            <tr>
+                <td style="width: 65%;">
+                    <div class="empresa-info">
+                        <h3>Nombre de la empresa</h3>
+                        <p>Direccion:</p>
+                        <p>Telefono:</p>
+                    </div>
+                </td>
+                <td style="width: 35%; text-align: right;">
+                    <div class="boleta-box" style="margin-left: auto;">
+                        <div>Ruc: 3434343434</div>
+                        <div class="tipo-doc">BOLETA</div>
+                        <div>Nro: 00000111</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="cliente-info">
+            <tr>
+                <td style="width: 12%;">Cliente:</td>
+                <td style="width: 88%;" class="linea-subrayado" id="pdf-cliente"></td>
+            </tr>
+            <tr>
+                <td>Documento:</td>
+                <td>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="width: 35%; padding:0;" class="linea-subrayado" id="pdf-documento"></td>
+                            <td style="width: 10%; text-align: center; padding:0;">Fecha:</td>
+                            <td style="width: 55%; padding:0;" class="linea-subrayado" id="pdf-fecha"></td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <table class="items-tabla">
+            <thead>
+                <tr>
+                    <th style="width: 15%;">Litros.</th>
+                    <th style="width: 45%;">Descripcion</th>
+                    <th style="width: 20%;">P. Unitario</th>
+                    <th style="width: 20%;">Importe</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-cuerpo">
+                <tr id="row-1">
+                    <td id="pdf-litros1"></td>
+                    <td id="pdf-desc1"></td>
+                    <td id="pdf-unit1"></td>
+                    <td id="pdf-imp1" class="text-right"></td>
+                </tr>
+                <tr id="row-2">
+                    <td id="pdf-litros2"></td>
+                    <td id="pdf-desc2"></td>
+                    <td id="pdf-unit2"></td>
+                    <td id="pdf-imp2" class="text-right"></td>
+                </tr>
+                <tr>
+                    <td style="border: none;"></td>
+                    <td style="border: none;"></td>
+                    <td class="text-right" style="font-weight: bold;">Total:</td>
+                    <td id="pdf-total" class="text-right"></td>
+                </tr>
+            </tbody>
+        </table>
+
+    </div>
+
+    <script>
+        // Establecer la fecha de hoy por defecto en el formulario
+        window.onload = function() {
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('input-fecha').value = hoy;
+            calcularTotales();
+        };
+
+        // Función matemática para procesar las operaciones en vivo
+        function calcularTotales() {
+            // Producto 1
+            const cant1 = parseFloat(document.getElementById('cant1').value) || 0;
+            const prec1 = parseFloat(document.getElementById('prec1').value) || 0;
+            const sub1 = cant1 * prec1;
+            document.getElementById('sub1').innerText = sub1.toFixed(2);
+
+            // Producto 2
+            const cant2 = parseFloat(document.getElementById('cant2').value) || 0;
+            const prec2 = parseFloat(document.getElementById('prec2').value) || 0;
+            const sub2 = cant2 * prec2;
+            document.getElementById('sub2').innerText = sub2.toFixed(2);
+
+            // Total General
+            const total = sub1 + sub2;
+            document.getElementById('total-formulario').innerText = total.toFixed(2);
+        }
+
+        // Conversión y exportación de diseño estructurado
+        function generarBoletaPDF() {
+            const cliente = document.getElementById('input-cliente').value;
+            const documento = document.getElementById('input-doc').value;
+            const fecha = document.getElementById('input-fecha').value;
+
+            if (!cliente) {
+                alert("Por favor ingrese el nombre del cliente.");
+                return;
+            }
+
+            // 1. Pasar valores del formulario a la estructura limpia del PDF
+            document.getElementById('pdf-cliente').innerText = cliente;
+            document.getElementById('pdf-documento').innerText = documento;
+            
+            // Formato de fecha (DD/MM/AAAA) igual al ejemplo
+            if(fecha) {
+                document.getElementById('pdf-fecha').innerText = fecha.split('-').reverse().join('/');
+            }
+
+            // Pasar Fila 1
+            document.getElementById('pdf-litros1').innerText = document.getElementById('cant1').value;
+            document.getElementById('pdf-desc1').innerText = document.getElementById('desc1').value;
+            document.getElementById('pdf-unit1').innerText = parseFloat(document.getElementById('prec1').value || 0).toFixed(2);
+            document.getElementById('pdf-imp1').innerText = document.getElementById('sub1').innerText;
+
+            // Pasar Fila 2
+            document.getElementById('pdf-litros2').innerText = document.getElementById('cant2').value;
+            document.getElementById('pdf-desc2').innerText = document.getElementById('desc2').value;
+            document.getElementById('pdf-unit2').innerText = parseFloat(document.getElementById('prec2').value || 0).toFixed(2);
+            document.getElementById('pdf-imp2').innerText = document.getElementById('sub2').innerText;
+
+            // Pasar Total
+            document.getElementById('pdf-total').innerText = document.getElementById('total-formulario').innerText;
+
+            // 2. Ejecutar renderizado estructurado
+            const elementoBoleta = document.getElementById('boleta-pdf');
+            elementoBoleta.style.display = 'block'; // Mostrar temporalmente para html2pdf
+
+            const opciones = {
+                margin:       [0.5, 0.5, 0.5, 0.5],
+                filename:     `Pdf_Aceite_${cliente.replace(/\s+/g, '_')}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, logging: false },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+
+            // Ejecuta, guarda y vuelve a ocultar la maqueta
+            html2pdf().set(opciones).from(elementoBoleta).toPdf().get('pdf').then(function (pdf) {
+                pdf.output('dataurlnewwindow'); // Compatibilidad robusta en móviles
+            }).save().then(() => {
+                elementoBoleta.style.display = 'none';
+            });
+        }
+    </script>
+</body>
+</html>
